@@ -422,3 +422,21 @@ input:focus, select:focus, textarea:focus {
 
 .gallery-actions { display: flex; gap: 8px; padding: 0 14px 14px; }
 .gallery-actions button { flex: 1; font-size: 13px; padding: 8px; }
+
+.social-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  border: 2px solid var(--border);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.social-btn:hover { background: var(--coral-light); color: var(--coral-dark); transform: translateY(-2px); }
+.social-btn svg { width: 20px; height: 20px; fill: currentColor; }

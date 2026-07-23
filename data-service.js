@@ -32,6 +32,19 @@ function checkError(error, contexto) {
 
 // ---------- Mapeo de filas (snake_case DB -> camelCase app) ----------
 
+function mapRedes(row) {
+  return {
+    instagram: row.instagram || null,
+    facebook: row.facebook || null,
+    whatsapp: row.whatsapp || null,
+    linkedin: row.linkedin || null,
+    twitch: row.twitch || null,
+    youtube: row.youtube || null,
+    tiktok: row.tiktok || null,
+    twitter: row.twitter || null,
+  };
+}
+
 function mapFundacion(row, suscripcionRow) {
   if (!row) return null;
   return {
@@ -47,6 +60,7 @@ function mapFundacion(row, suscripcionRow) {
     numeroCuenta: row.numero_cuenta,
     rut: row.rut,
     emailPagos: row.email_pagos,
+    redes: mapRedes(row),
     suscripcion: suscripcionRow
       ? { plan: suscripcionRow.plan, estado: suscripcionRow.estado }
       : { plan: "gratis", estado: "activa" },
@@ -65,6 +79,7 @@ function mapPersona(row) {
     tipoCuenta: row.tipo_cuenta,
     numeroCuenta: row.numero_cuenta,
     emailPagos: row.email_pagos,
+    redes: mapRedes(row),
     creadoEn: row.creado_en,
   };
 }
@@ -117,7 +132,7 @@ const DataService = {
 
   // ---------- Fundaciones ----------
 
-  async crearFundacion({ nombre, tipo, ciudad, email, banco, tipoCuenta, numeroCuenta, rut, emailPagos }) {
+  async crearFundacion({ nombre, tipo, ciudad, email, banco, tipoCuenta, numeroCuenta, rut, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
     const { data, error } = await sb
       .from("fundaciones")
       .insert({
@@ -127,6 +142,14 @@ const DataService = {
         numero_cuenta: numeroCuenta || null,
         rut: rut || null,
         email_pagos: emailPagos || null,
+        instagram: instagram || null,
+        facebook: facebook || null,
+        whatsapp: whatsapp || null,
+        linkedin: linkedin || null,
+        twitch: twitch || null,
+        youtube: youtube || null,
+        tiktok: tiktok || null,
+        twitter: twitter || null,
       })
       .select()
       .single();
@@ -214,7 +237,7 @@ const DataService = {
 
   // ---------- Personas naturales ----------
 
-  async crearPersonaNatural({ nombre, rut, ciudad, email, banco, tipoCuenta, numeroCuenta, emailPagos }) {
+  async crearPersonaNatural({ nombre, rut, ciudad, email, banco, tipoCuenta, numeroCuenta, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
     const { data, error } = await sb
       .from("personas_naturales")
       .insert({
@@ -223,6 +246,14 @@ const DataService = {
         tipo_cuenta: tipoCuenta || null,
         numero_cuenta: numeroCuenta || null,
         email_pagos: emailPagos || null,
+        instagram: instagram || null,
+        facebook: facebook || null,
+        whatsapp: whatsapp || null,
+        linkedin: linkedin || null,
+        twitch: twitch || null,
+        youtube: youtube || null,
+        tiktok: tiktok || null,
+        twitter: twitter || null,
       })
       .select()
       .single();
@@ -402,6 +433,14 @@ const DataService = {
     if (campos.numeroCuenta !== undefined) payload.numero_cuenta = campos.numeroCuenta;
     if (campos.rut !== undefined) payload.rut = campos.rut;
     if (campos.emailPagos !== undefined) payload.email_pagos = campos.emailPagos;
+    if (campos.instagram !== undefined) payload.instagram = campos.instagram || null;
+    if (campos.facebook !== undefined) payload.facebook = campos.facebook || null;
+    if (campos.whatsapp !== undefined) payload.whatsapp = campos.whatsapp || null;
+    if (campos.linkedin !== undefined) payload.linkedin = campos.linkedin || null;
+    if (campos.twitch !== undefined) payload.twitch = campos.twitch || null;
+    if (campos.youtube !== undefined) payload.youtube = campos.youtube || null;
+    if (campos.tiktok !== undefined) payload.tiktok = campos.tiktok || null;
+    if (campos.twitter !== undefined) payload.twitter = campos.twitter || null;
 
     const { data, error } = await sb
       .from("fundaciones")
