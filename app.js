@@ -102,7 +102,35 @@ function showView(view) {
 document.getElementById("main-tabs").addEventListener("click", e => {
   const btn = e.target.closest(".tab-btn");
   if (btn) showView(btn.dataset.view);
+  closeMobileMenu();
 });
+
+// ---------------- Menú hamburguesa (móvil) ----------------
+
+const menuToggle = document.getElementById("menu-toggle");
+const mainTabs = document.getElementById("main-tabs");
+const menuBackdrop = document.getElementById("menu-backdrop");
+
+function openMobileMenu() {
+  menuToggle.classList.add("open");
+  menuToggle.setAttribute("aria-expanded", "true");
+  mainTabs.classList.add("open");
+  menuBackdrop.classList.add("show");
+}
+
+function closeMobileMenu() {
+  menuToggle.classList.remove("open");
+  menuToggle.setAttribute("aria-expanded", "false");
+  mainTabs.classList.remove("open");
+  menuBackdrop.classList.remove("show");
+}
+
+menuToggle.addEventListener("click", () => {
+  const isOpen = mainTabs.classList.contains("open");
+  isOpen ? closeMobileMenu() : openMobileMenu();
+});
+
+menuBackdrop.addEventListener("click", closeMobileMenu);
 
 // ---------------- Selector de fundación (dashboard) ----------------
 
