@@ -28,22 +28,36 @@
     <span class="menu-toggle-bar"></span>
   </button>
 
-  <nav class="tabs" id="main-tabs">
-    <button class="tab-btn active" data-view="dashboard">Panel</button>
-    <button class="tab-btn" data-view="registro">Registrar fundación</button>
-    <button class="tab-btn" data-view="registro-persona">Publicar como particular</button>
-    <button class="tab-btn" data-view="casos">Casos</button>
-    <button class="tab-btn" data-view="suscripcion">Suscripción</button>
-  </nav>
+  <nav class="tabs" id="main-tabs"></nav>
   <div id="admin-area"></div>
 </header>
 
 <div class="menu-backdrop" id="menu-backdrop"></div>
 
+<!-- ================= MODAL LOG IN ================= -->
+<div class="modal-backdrop" id="login-modal-backdrop">
+  <div class="modal-card">
+    <h2 style="margin-top:0;">Iniciar sesión</h2>
+    <p class="subtitle">Fundaciones y administrador entran por aquí.</p>
+    <form id="form-login">
+      <label>Email
+        <input type="email" name="email" required placeholder="tu@fundacion.cl" />
+      </label>
+      <label>Contraseña
+        <input type="password" name="password" required placeholder="••••••••" />
+      </label>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button type="submit" class="btn-primary">Entrar</button>
+        <button type="button" class="btn-secondary" id="btn-cerrar-login">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <main id="app">
 
   <!-- ================= DASHBOARD ================= -->
-  <section id="view-dashboard" class="view active">
+  <section id="view-dashboard" class="view">
     <h1>Panel de la fundación</h1>
     <p class="subtitle">Selecciona una fundación para ver su estado y resumen.</p>
 
@@ -92,6 +106,15 @@
         </label>
         <label>Email de contacto
           <input type="email" name="email" required placeholder="contacto@fundacion.cl" />
+        </label>
+
+        <p class="card-label" style="margin-top:16px;">Tu cuenta de acceso</p>
+        <p class="subtitle" style="margin:-6px 0 12px;font-size:14px;">Con esto vas a poder iniciar sesión y gestionar tus propios casos.</p>
+        <label>Contraseña
+          <input type="password" name="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+        </label>
+        <label>Repetir contraseña
+          <input type="password" id="password-confirm" required minlength="6" placeholder="Repite la contraseña" />
         </label>
 
         <p class="card-label" style="margin-top:16px;">Datos para recibir transferencias (donaciones)</p>
@@ -174,7 +197,7 @@
   </section>
 
   <!-- ================= PERSONA NATURAL ================= -->
-  <section id="view-registro-persona" class="view">
+  <section id="view-registro-persona" class="view active">
     <h1>Publicar como particular</h1>
     <p class="subtitle">¿No eres una fundación? Puedes publicar un caso con tu propio RUT, sin necesidad de personalidad jurídica.</p>
 
@@ -274,10 +297,17 @@
     </form>
   </section>
 
-  <!-- ================= CASOS ================= -->
+  <!-- ================= CASOS (vitrina pública) ================= -->
   <section id="view-casos" class="view">
     <h1>Casos de ayuda</h1>
-    <p class="subtitle">Solo fundaciones verificadas pueden publicar casos.</p>
+    <p class="subtitle">Todos los casos abiertos, de fundaciones y particulares.</p>
+    <div id="lista-casos" class="cards-grid"></div>
+  </section>
+
+  <!-- ================= MIS CASOS (gestión, solo fundación logueada) ================= -->
+  <section id="view-mis-casos" class="view">
+    <h1>Mis casos</h1>
+    <p class="subtitle" id="mis-casos-subtitle"></p>
 
     <details class="card" id="nuevo-caso-wrap">
       <summary>Publicar nuevo caso</summary>
@@ -315,7 +345,7 @@
       </form>
     </details>
 
-    <div id="lista-casos" class="cards-grid"></div>
+    <div id="lista-mis-casos" class="cards-grid"></div>
   </section>
 
   <!-- ================= DETALLE DE CASO ================= -->

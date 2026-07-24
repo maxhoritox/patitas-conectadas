@@ -132,11 +132,19 @@ const DataService = {
 
   // ---------- Fundaciones ----------
 
-  async crearFundacion({ nombre, tipo, ciudad, email, banco, tipoCuenta, numeroCuenta, rut, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
+  async crearFundacion({ nombre, tipo, ciudad, email, password, banco, tipoCuenta, numeroCuenta, rut, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
+    let userId = null;
+    if (password) {
+      const { data: authData, error: authError } = await sb.auth.signUp({ email, password });
+      checkError(authError, "Error creando la cuenta de la fundación");
+      userId = authData.user ? authData.user.id : null;
+    }
+
     const { data, error } = await sb
       .from("fundaciones")
       .insert({
         nombre, tipo, ciudad, email,
+        user_id: userId,
         banco: banco || null,
         tipo_cuenta: tipoCuenta || null,
         numero_cuenta: numeroCuenta || null,
@@ -217,6 +225,19 @@ const DataService = {
     const { data, error } = await sb.from("fundaciones").select("*").order("creado_en");
     checkError(error, "Error listando fundaciones");
     return data.map(row => mapFundacion(row));
+  },
+
+  async obtenerFundacionPorUsuario(userId) {
+    if (!userId) return null;
+    const { data, error } = await sb.from("fundaciones").select("*").eq("user_id", userId).maybeSingle();
+    checkError(error, "Error buscando la fundación de esta cuenta");
+    if (!data) return null;
+    const { data: sub } = await sb
+      .from("suscripciones")
+      .select("*")
+      .eq("fundacion_id", data.id)
+      .maybeSingle();
+    return mapFundacion(data, sub);
   },
 
   // ---------- Suscripciones ----------

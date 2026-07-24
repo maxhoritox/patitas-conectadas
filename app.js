@@ -89,6 +89,8 @@ function avatarPara(especie) {
 let fundacionActualId = null;
 let casoActualId = null;
 let adminUser = null;
+let role = "anon"; // "anon" | "fundacion" | "admin"
+let miFundacion = null;
 
 function formatCLP(n) {
   return "$" + Number(n).toLocaleString("es-CL");
@@ -110,34 +112,100 @@ async function withErrorToast(fn) {
   }
 }
 
-async function renderAdminArea() {
+// ---------------- Sesión (público / fundación / admin) ----------------
+
+function renderSessionArea() {
   const wrap = document.getElementById("admin-area");
-  if (adminUser) {
-    wrap.innerHTML = `<button class="btn-secondary" id="btn-logout-admin">Salir (${adminUser.email})</button>`;
-    document.getElementById("btn-logout-admin").addEventListener("click", async () => {
-      await DataService.logoutAdmin();
-      adminUser = null;
-      renderAdminArea();
-      renderDashboard();
-    });
+  if (role === "fundacion") {
+    wrap.innerHTML = `<span class="session-chip">${miFundacion.nombre}</span><button class="btn-secondary" id="btn-logout">Salir</button>`;
+  } else if (role === "admin") {
+    wrap.innerHTML = `<span class="session-chip">Admin · ${adminUser.email}</span><button class="btn-secondary" id="btn-logout">Salir</button>`;
   } else {
-    wrap.innerHTML = `<button class="btn-secondary" id="btn-login-admin">Admin</button>`;
-    document.getElementById("btn-login-admin").addEventListener("click", () => {
-      const email = prompt("Email de administrador:");
-      if (!email) return;
-      const password = prompt("Contraseña:");
-      if (!password) return;
-      withErrorToast(async () => {
-        adminUser = await DataService.loginAdmin(email, password);
-        toast("Sesión iniciada.");
-        renderAdminArea();
-        renderDashboard();
-      });
-    });
+    wrap.innerHTML = `<button class="btn-secondary" id="btn-login">Iniciar sesión</button>`;
+    document.getElementById("btn-login").addEventListener("click", openLoginModal);
+    return;
   }
+  document.getElementById("btn-logout").addEventListener("click", async () => {
+    await DataService.logoutAdmin();
+    role = "anon";
+    adminUser = null;
+    miFundacion = null;
+    fundacionActualId = null;
+    renderNav();
+    renderSessionArea();
+    showView("registro-persona");
+  });
+}
+
+function openLoginModal() {
+  document.getElementById("login-modal-backdrop").classList.add("show");
+}
+function closeLoginModal() {
+  document.getElementById("login-modal-backdrop").classList.remove("show");
+  document.getElementById("form-login").reset();
+}
+document.getElementById("btn-cerrar-login").addEventListener("click", closeLoginModal);
+document.getElementById("login-modal-backdrop").addEventListener("click", e => {
+  if (e.target.id === "login-modal-backdrop") closeLoginModal();
+});
+
+document.getElementById("form-login").addEventListener("submit", async e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  const user = await withErrorToast(() => DataService.loginAdmin(data.email, data.password));
+  if (!user) return;
+  await afterLogin(user);
+  closeLoginModal();
+});
+
+async function afterLogin(user) {
+  const fundacion = await withErrorToast(() => DataService.obtenerFundacionPorUsuario(user.id));
+  if (fundacion) {
+    role = "fundacion";
+    miFundacion = fundacion;
+    adminUser = null;
+    fundacionActualId = fundacion.id;
+    toast(`Bienvenido/a, ${fundacion.nombre}`);
+  } else {
+    role = "admin";
+    adminUser = user;
+    miFundacion = null;
+    toast("Sesión iniciada como administrador.");
+  }
+  renderNav();
+  renderSessionArea();
+  showView("dashboard");
 }
 
 // ---------------- Navegación entre vistas ----------------
+
+const TABS_POR_ROL = {
+  anon: [
+    { view: "registro-persona", label: "Publicar como particular" },
+    { view: "casos", label: "Casos" },
+    { view: "registro", label: "Registrarme" },
+  ],
+  fundacion: [
+    { view: "dashboard", label: "Mi panel" },
+    { view: "mis-casos", label: "Mis casos" },
+    { view: "casos", label: "Casos" },
+    { view: "suscripcion", label: "Suscripción" },
+  ],
+  admin: [
+    { view: "dashboard", label: "Panel" },
+    { view: "registro", label: "Registrar fundación" },
+    { view: "registro-persona", label: "Publicar como particular" },
+    { view: "casos", label: "Casos" },
+    { view: "suscripcion", label: "Suscripción" },
+  ],
+};
+
+function renderNav() {
+  const nav = document.getElementById("main-tabs");
+  nav.innerHTML = TABS_POR_ROL[role]
+    .map(t => `<button class="tab-btn" data-view="${t.view}">${t.label}</button>`)
+    .join("");
+}
 
 function showView(view) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
@@ -148,6 +216,7 @@ function showView(view) {
 
   if (view === "dashboard") renderDashboard();
   if (view === "casos") renderCasos();
+  if (view === "mis-casos") renderMisCasos();
   if (view === "suscripcion") renderSuscripcion();
 }
 
@@ -188,6 +257,12 @@ menuBackdrop.addEventListener("click", closeMobileMenu);
 
 async function renderSelectorFundacion() {
   const wrap = document.getElementById("selector-fundacion");
+
+  if (role === "fundacion") {
+    wrap.innerHTML = "";
+    return;
+  }
+
   const fundaciones = await withErrorToast(() => DataService.listarFundaciones()) || [];
 
   if (fundaciones.length === 0) {
@@ -210,6 +285,7 @@ async function renderSelectorFundacion() {
 }
 
 async function renderDashboard() {
+  if (role === "fundacion") fundacionActualId = miFundacion.id;
   await renderSelectorFundacion();
   await renderGaleriaCasos();
   const content = document.getElementById("dashboard-content");
@@ -251,11 +327,12 @@ async function renderDashboard() {
 
 function renderEdicionFundacion(f) {
   const wrap = document.getElementById("admin-edit-fundacion");
-  if (!adminUser) { wrap.innerHTML = ""; return; }
+  const puedeEditar = adminUser || (role === "fundacion" && miFundacion && miFundacion.id === f.id);
+  if (!puedeEditar) { wrap.innerHTML = ""; return; }
 
   wrap.innerHTML = `
     <details class="card">
-      <summary>Editar datos de la fundación (solo admin)</summary>
+      <summary>${adminUser ? "Editar datos de la fundación (solo admin)" : "Editar datos de mi fundación"}</summary>
       <form id="form-editar-fundacion">
         <label>Nombre
           <input type="text" name="nombre" value="${f.nombre}" required />
@@ -308,9 +385,10 @@ function renderEdicionFundacion(f) {
         </label>
         <button type="submit" class="btn-primary">Guardar cambios ${ICONS.perro}</button>
       </form>
+      ${adminUser ? `
       <button class="btn-secondary" id="btn-eliminar-fundacion" style="margin-top:12px;border-color:var(--coral);color:var(--coral-dark);">
         Eliminar fundación
-      </button>
+      </button>` : ""}
     </details>
   `;
 
@@ -323,15 +401,18 @@ function renderEdicionFundacion(f) {
     renderDashboard();
   });
 
-  document.getElementById("btn-eliminar-fundacion").addEventListener("click", async () => {
-    const confirmado = confirm(`¿Eliminar "${f.nombre}" y todos sus casos y donaciones? Esta acción no se puede deshacer.`);
-    if (!confirmado) return;
-    const ok = await withErrorToast(async () => { await DataService.eliminarFundacion(fundacionActualId); return true; });
-    if (!ok) return;
-    toast("Fundación eliminada.");
-    fundacionActualId = null;
-    renderDashboard();
-  });
+  const btnEliminarFundacion = document.getElementById("btn-eliminar-fundacion");
+  if (btnEliminarFundacion) {
+    btnEliminarFundacion.addEventListener("click", async () => {
+      const confirmado = confirm(`¿Eliminar "${f.nombre}" y todos sus casos y donaciones? Esta acción no se puede deshacer.`);
+      if (!confirmado) return;
+      const ok = await withErrorToast(async () => { await DataService.eliminarFundacion(fundacionActualId); return true; });
+      if (!ok) return;
+      toast("Fundación eliminada.");
+      fundacionActualId = null;
+      renderDashboard();
+    });
+  }
 }
 
 async function renderGaleriaCasos() {
@@ -406,10 +487,15 @@ function estadoLegible(estado) {
 document.getElementById("form-registro").addEventListener("submit", async e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target).entries());
+  const confirmPass = document.getElementById("password-confirm").value;
+  if (data.password !== confirmPass) {
+    toast("Las contraseñas no coinciden.");
+    return;
+  }
   const f = await withErrorToast(() => DataService.crearFundacion(data));
   if (!f) return;
   fundacionActualId = f.id;
-  toast(`Fundación "${f.nombre}" creada. Ahora sube tus documentos.`);
+  toast(`Fundación "${f.nombre}" creada. Revisa tu correo para confirmar la cuenta y luego sube tus documentos.`);
   goToStep(2);
 });
 
@@ -475,18 +561,18 @@ function goToStep(step) {
 
 document.getElementById("form-caso").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!fundacionActualId) {
-    toast("Primero selecciona o registra una fundación.");
+  if (role !== "fundacion" || !miFundacion) {
+    toast("Inicia sesión como fundación para publicar un caso.");
     return;
   }
   const data = Object.fromEntries(new FormData(e.target).entries());
   const foto = document.getElementById("foto-caso-fundacion").files[0] || null;
-  const ok = await withErrorToast(() => DataService.crearCaso({ publicadorTipo: "fundacion", publicadorId: fundacionActualId, ...data }, foto));
+  const ok = await withErrorToast(() => DataService.crearCaso({ publicadorTipo: "fundacion", publicadorId: miFundacion.id, ...data }, foto));
   if (!ok) return;
   toast("Caso publicado con éxito.");
   e.target.reset();
   document.getElementById("nuevo-caso-wrap").removeAttribute("open");
-  renderCasos();
+  renderMisCasos();
 });
 
 document.getElementById("form-persona").addEventListener("submit", async e => {
@@ -502,6 +588,30 @@ document.getElementById("form-persona").addEventListener("submit", async e => {
   showView("casos");
 });
 
+function tarjetaCaso(c) {
+  const pct = Math.min(100, Math.round((c.recaudado / c.metaRecaudacion) * 100)) || 0;
+  const badge = c.estado === "cumplido" ? `<span class="badge badge-done">Meta cumplida</span>` : `<span class="badge badge-open">Abierto</span>`;
+  return `
+    <div class="caso-card" data-id="${c.id}">
+      ${badge}
+      <h3>${c.animal.nombre} · ${c.tipoAyuda}</h3>
+      <div class="meta">${c.publicador.nombre}${c.publicador.tipo === "persona" ? " · particular" : ""}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-text">${formatCLP(c.recaudado)} de ${formatCLP(c.metaRecaudacion)}</div>
+    </div>
+  `;
+}
+
+function attachCasoCardHandlers(wrap) {
+  wrap.querySelectorAll(".caso-card").forEach(card => {
+    card.addEventListener("click", () => {
+      casoActualId = card.dataset.id;
+      renderDetalleCaso();
+      showViewRaw("detalle-caso");
+    });
+  });
+}
+
 async function renderCasos() {
   const wrap = document.getElementById("lista-casos");
   wrap.innerHTML = `<p class="empty-state">Cargando...</p>`;
@@ -512,27 +622,38 @@ async function renderCasos() {
     return;
   }
 
-  wrap.innerHTML = casos.map(c => {
-    const pct = Math.min(100, Math.round((c.recaudado / c.metaRecaudacion) * 100)) || 0;
-    const badge = c.estado === "cumplido" ? `<span class="badge badge-done">Meta cumplida</span>` : `<span class="badge badge-open">Abierto</span>`;
-    return `
-      <div class="caso-card" data-id="${c.id}">
-        ${badge}
-        <h3>${c.animal.nombre} · ${c.tipoAyuda}</h3>
-        <div class="meta">${c.publicador.nombre}${c.publicador.tipo === "persona" ? " · particular" : ""}</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        <div class="progress-text">${formatCLP(c.recaudado)} de ${formatCLP(c.metaRecaudacion)}</div>
-      </div>
-    `;
-  }).join("");
+  wrap.innerHTML = casos.map(tarjetaCaso).join("");
+  attachCasoCardHandlers(wrap);
+}
 
-  wrap.querySelectorAll(".caso-card").forEach(card => {
-    card.addEventListener("click", () => {
-      casoActualId = card.dataset.id;
-      renderDetalleCaso();
-      showViewRaw("detalle-caso");
-    });
-  });
+async function renderMisCasos() {
+  const subtitle = document.getElementById("mis-casos-subtitle");
+  const publishWrap = document.getElementById("nuevo-caso-wrap");
+  const wrap = document.getElementById("lista-mis-casos");
+
+  if (role !== "fundacion" || !miFundacion) {
+    subtitle.textContent = "Inicia sesión como fundación para ver y publicar tus casos.";
+    publishWrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+
+  const verificada = miFundacion.estadoVerificacion === "verificada";
+  subtitle.textContent = verificada
+    ? "Publica y revisa el estado de los casos de tu fundación."
+    : "Tu fundación aún no está verificada — cuando lo esté, podrás publicar casos aquí.";
+  publishWrap.style.display = verificada ? "" : "none";
+
+  wrap.innerHTML = `<p class="empty-state">Cargando...</p>`;
+  const casos = await withErrorToast(() => DataService.listarCasos({ fundacionId: miFundacion.id })) || [];
+
+  if (casos.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">${MASCOT_EMPTY}<div>Todavía no has publicado casos.</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = casos.map(tarjetaCaso).join("");
+  attachCasoCardHandlers(wrap);
 }
 
 function showViewRaw(view) {
@@ -682,7 +803,13 @@ async function renderSuscripcion() {
 // ---------------- Inicio ----------------
 
 (async () => {
-  adminUser = await DataService.sesionActual();
-  await renderAdminArea();
-  renderDashboard();
+  const user = await DataService.sesionActual();
+  if (user) {
+    await afterLogin(user);
+  } else {
+    role = "anon";
+    renderNav();
+    renderSessionArea();
+    showView("registro-persona");
+  }
 })();
