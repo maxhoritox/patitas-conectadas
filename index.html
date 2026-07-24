@@ -217,6 +217,47 @@
 
 <main id="app">
 
+  <!-- ================= HOME (portada pública) ================= -->
+  <section id="view-home" class="view active">
+    <div class="hero-strip">
+      <svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="32" ry="28" fill="#fff3d6"/><ellipse cx="30" cy="30" rx="8" ry="12" fill="#ffb100" transform="rotate(-25 30 30)"/><ellipse cx="70" cy="30" rx="8" ry="12" fill="#ffb100" transform="rotate(25 70 30)"/><circle cx="41" cy="48" r="3" fill="#2b2420"/><circle cx="59" cy="48" r="3" fill="#2b2420"/><ellipse cx="50" cy="58" rx="4" ry="3" fill="#2b2420"/><path d="M44 63 Q50 68 56 63" stroke="#2b2420" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <p>Conectamos a fundaciones, particulares y personas que quieren ayudar, para que ningún animal quede sin una mano tendida.</p>
+    </div>
+
+    <div class="card">
+      <p class="card-label">Por qué existe Patitas Conectadas</p>
+      <p>
+        Nació de una idea simple: en Chile hay muchas fundaciones y personas rescatando animales
+        día a día, pero sin un lugar único donde mostrar sus casos, recibir ayuda de forma directa
+        y transparente, y que la gente confíe en que su donación llega a quien realmente lo necesita.
+        Patitas Conectadas existe para cerrar esa brecha.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="card-label">Nuestra misión</p>
+      <p>Facilitar que cualquier persona pueda ayudar a un animal en necesidad, conectando directamente a quien rescata con quien quiere aportar — sin intermediarios ni comisiones.</p>
+    </div>
+
+    <div class="card">
+      <p class="card-label">Nuestra visión</p>
+      <p>Ser la red de ayuda animal más confiable de Chile, donde fundaciones, refugios y particulares encuentren la visibilidad y el respaldo que necesitan para seguir rescatando.</p>
+    </div>
+
+    <div class="gallery-section">
+      <h2>Casos que necesitan ayuda ahora</h2>
+      <div id="galeria-casos-home" class="gallery-grid"></div>
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <p class="card-label" style="margin-bottom:14px;">¿Quieres ayudar o publicar un caso?</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn-primary" data-view="registro-persona">Publicar como particular</button>
+        <button class="btn-secondary" data-view="registro">Registrar mi fundación</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= DASHBOARD ================= -->
   <section id="view-dashboard" class="view">
     <h1>Panel de la fundación</h1>
@@ -349,7 +390,7 @@
   </section>
 
   <!-- ================= PERSONA NATURAL ================= -->
-  <section id="view-registro-persona" class="view active">
+  <section id="view-registro-persona" class="view">
     <h1>Publicar como particular</h1>
     <p class="subtitle">¿No eres una fundación? Puedes publicar un caso con tu propio RUT, sin necesidad de personalidad jurídica.</p>
 

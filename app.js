@@ -149,7 +149,7 @@ function renderSessionArea() {
     fundacionActualId = null;
     renderNav();
     renderSessionArea();
-    showView("registro-persona");
+    showView("home");
   });
 }
 
@@ -197,17 +197,20 @@ async function afterLogin(user) {
 
 const TABS_POR_ROL = {
   anon: [
+    { view: "home", label: "Inicio" },
     { view: "registro-persona", label: "Publicar como particular" },
     { view: "casos", label: "Casos" },
     { view: "registro", label: "Registrarme" },
   ],
   fundacion: [
+    { view: "home", label: "Inicio" },
     { view: "dashboard", label: "Mi panel" },
     { view: "mis-casos", label: "Mis casos" },
     { view: "casos", label: "Casos" },
     { view: "suscripcion", label: "Suscripción" },
   ],
   admin: [
+    { view: "home", label: "Inicio" },
     { view: "dashboard", label: "Panel" },
     { view: "registro", label: "Registrar fundación" },
     { view: "registro-persona", label: "Publicar como particular" },
@@ -230,14 +233,15 @@ function showView(view) {
     b.classList.toggle("active", b.dataset.view === view);
   });
 
+  if (view === "home") renderGaleriaCasos("galeria-casos-home");
   if (view === "dashboard") renderDashboard();
   if (view === "casos") renderCasos();
   if (view === "mis-casos") renderMisCasos();
   if (view === "suscripcion") renderSuscripcion();
 }
 
-document.getElementById("main-tabs").addEventListener("click", e => {
-  const btn = e.target.closest(".tab-btn");
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-view]");
   if (btn) showView(btn.dataset.view);
   closeMobileMenu();
 });
@@ -422,8 +426,9 @@ function renderEdicionFundacion(f) {
   }
 }
 
-async function renderGaleriaCasos() {
-  const wrap = document.getElementById("galeria-casos");
+async function renderGaleriaCasos(targetId = "galeria-casos") {
+  const wrap = document.getElementById(targetId);
+  if (!wrap) return;
   const todos = await withErrorToast(() => DataService.listarCasos()) || [];
   const abiertos = todos.filter(c => c.estado === "abierto").slice(0, 6);
 
@@ -817,6 +822,6 @@ async function renderSuscripcion() {
     role = "anon";
     renderNav();
     renderSessionArea();
-    showView("registro-persona");
+    showView("home");
   }
 })();
