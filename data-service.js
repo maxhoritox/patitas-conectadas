@@ -37,9 +37,6 @@ function mapRedes(row) {
     instagram: row.instagram || null,
     facebook: row.facebook || null,
     whatsapp: row.whatsapp || null,
-    linkedin: row.linkedin || null,
-    twitch: row.twitch || null,
-    youtube: row.youtube || null,
     tiktok: row.tiktok || null,
     twitter: row.twitter || null,
   };
@@ -132,7 +129,7 @@ const DataService = {
 
   // ---------- Fundaciones ----------
 
-  async crearFundacion({ nombre, tipo, ciudad, email, password, banco, tipoCuenta, numeroCuenta, rut, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
+  async crearFundacion({ nombre, tipo, ciudad, email, password, banco, tipoCuenta, numeroCuenta, rut, emailPagos, instagram, facebook, whatsapp, tiktok, twitter }) {
     let userId = null;
     if (password) {
       const { data: authData, error: authError } = await sb.auth.signUp({ email, password });
@@ -153,9 +150,6 @@ const DataService = {
         instagram: instagram || null,
         facebook: facebook || null,
         whatsapp: whatsapp || null,
-        linkedin: linkedin || null,
-        twitch: twitch || null,
-        youtube: youtube || null,
         tiktok: tiktok || null,
         twitter: twitter || null,
       })
@@ -258,7 +252,7 @@ const DataService = {
 
   // ---------- Personas naturales ----------
 
-  async crearPersonaNatural({ nombre, rut, ciudad, email, banco, tipoCuenta, numeroCuenta, emailPagos, instagram, facebook, whatsapp, linkedin, twitch, youtube, tiktok, twitter }) {
+  async crearPersonaNatural({ nombre, rut, ciudad, email, banco, tipoCuenta, numeroCuenta, emailPagos, instagram, facebook, whatsapp, tiktok, twitter }) {
     const { data, error } = await sb
       .from("personas_naturales")
       .insert({
@@ -270,9 +264,6 @@ const DataService = {
         instagram: instagram || null,
         facebook: facebook || null,
         whatsapp: whatsapp || null,
-        linkedin: linkedin || null,
-        twitch: twitch || null,
-        youtube: youtube || null,
         tiktok: tiktok || null,
         twitter: twitter || null,
       })
@@ -457,9 +448,6 @@ const DataService = {
     if (campos.instagram !== undefined) payload.instagram = campos.instagram || null;
     if (campos.facebook !== undefined) payload.facebook = campos.facebook || null;
     if (campos.whatsapp !== undefined) payload.whatsapp = campos.whatsapp || null;
-    if (campos.linkedin !== undefined) payload.linkedin = campos.linkedin || null;
-    if (campos.twitch !== undefined) payload.twitch = campos.twitch || null;
-    if (campos.youtube !== undefined) payload.youtube = campos.youtube || null;
     if (campos.tiktok !== undefined) payload.tiktok = campos.tiktok || null;
     if (campos.twitter !== undefined) payload.twitter = campos.twitter || null;
 

@@ -29,16 +29,13 @@ const REDES_ICONS = {
   instagram: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.1"/></svg>`,
   facebook: `<svg viewBox="0 0 24 24"><path d="M14.5 21v-7.5h2.5l0.4-3H14.5V8.4c0-.9.3-1.6 1.7-1.6h1.4V4.2C17.3 4.1 16.2 4 15 4c-2.6 0-4.4 1.6-4.4 4.5v2H8v3h2.6V21h3.9Z"/></svg>`,
   whatsapp: `<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.3 8.4c.2-.5.5-.5.8-.5h.6c.2 0 .5 0 .7.5.3.6.9 2 .9 2.1.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.4.4-.2.7.6 1 1.3 1.8 2.2 2.3.2.2.4.2.6 0 .2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.8.9 2.1 1 .3.1.5.2.5.4 0 .2 0 1-.5 1.6-.4.6-1.9 1.1-2.6 1.1-.7 0-2.2-.2-4.2-1.9-2.5-2.1-3.4-4.3-3.6-4.9-.1-.5-.5-1.3-.5-2.5s.6-1.6.8-1.7Z"/></svg>`,
-  linkedin: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="8.5" r="1.3"/><rect x="6.8" y="11" width="2.4" height="7"/><path d="M12 11h2.3v1.1c.4-.7 1.2-1.3 2.4-1.3 2 0 2.6 1.2 2.6 3.1V18h-2.4v-3.6c0-.9-.3-1.5-1.1-1.5-.9 0-1.3.6-1.3 1.5V18H12Z"/></svg>`,
-  twitch: `<svg viewBox="0 0 24 24"><path d="M5 3 3.5 6.5V18h4.2V21l3-3h3.3L18.5 13V3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="11" y1="7.5" x2="11" y2="12" stroke="currentColor" stroke-width="1.7"/><line x1="15" y1="7.5" x2="15" y2="12" stroke="currentColor" stroke-width="1.7"/></svg>`,
-  youtube: `<svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.2 9.3v5.4l4.8-2.7Z"/></svg>`,
   tiktok: `<svg viewBox="0 0 24 24"><path d="M14 3v10.8a2.6 2.6 0 1 1-2.2-2.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 3c.3 2.2 2 3.9 4.2 4.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   twitter: `<svg viewBox="0 0 24 24"><path d="M4 4l7 9.2L4.3 20H6l5.9-5.9L16 20h4l-7.3-9.6L19.5 4H17.7l-5.4 5.4L8 4Z"/></svg>`,
 };
 
 const REDES_LABEL = {
-  instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", linkedin: "LinkedIn",
-  twitch: "Twitch", youtube: "YouTube", tiktok: "TikTok", twitter: "X (Twitter)",
+  instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp",
+  tiktok: "TikTok", twitter: "X (Twitter)",
 };
 
 function redSocialUrl(key, valor) {
@@ -49,9 +46,6 @@ function redSocialUrl(key, valor) {
     case "instagram": return `https://instagram.com/${usuario}`;
     case "facebook": return `https://facebook.com/${usuario}`;
     case "whatsapp": return `https://wa.me/${usuario.replace(/[^0-9]/g, "")}`;
-    case "linkedin": return `https://linkedin.com/in/${usuario}`;
-    case "twitch": return `https://twitch.tv/${usuario}`;
-    case "youtube": return `https://youtube.com/${usuario.startsWith("@") ? usuario : "@" + usuario}`;
     case "tiktok": return `https://tiktok.com/@${usuario}`;
     case "twitter": return `https://x.com/${usuario}`;
     default: return v;
@@ -95,6 +89,28 @@ let miFundacion = null;
 function formatCLP(n) {
   return "$" + Number(n).toLocaleString("es-CL");
 }
+
+// ---------------- Formateo automático de RUT ----------------
+
+function formatRut(valor) {
+  const limpio = valor.replace(/[^0-9kK]/g, "").toUpperCase();
+  if (limpio.length === 0) return "";
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1);
+  if (cuerpo.length === 0) return dv;
+  const cuerpoConPuntos = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${cuerpoConPuntos}-${dv}`;
+}
+
+document.addEventListener("input", e => {
+  if (e.target.classList && e.target.classList.contains("rut-input")) {
+    const cursorAlFinal = e.target.selectionEnd === e.target.value.length;
+    e.target.value = formatRut(e.target.value);
+    if (cursorAlFinal) {
+      e.target.selectionStart = e.target.selectionEnd = e.target.value.length;
+    }
+  }
+});
 
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -338,7 +354,7 @@ function renderEdicionFundacion(f) {
           <input type="text" name="nombre" value="${f.nombre}" required />
         </label>
         <label>Ciudad
-          <input type="text" name="ciudad" value="${f.ciudad}" required />
+          <input type="text" name="ciudad" value="${f.ciudad}" list="ciudades-cl" required />
         </label>
         <label>Email de contacto
           <input type="email" name="email" value="${f.email}" required />
@@ -353,7 +369,7 @@ function renderEdicionFundacion(f) {
           <input type="text" name="numeroCuenta" value="${f.numeroCuenta || ""}" />
         </label>
         <label>RUT
-          <input type="text" name="rut" value="${f.rut || ""}" />
+          <input type="text" name="rut" class="rut-input" value="${f.rut || ""}" />
         </label>
         <label>Email para pagos
           <input type="email" name="emailPagos" value="${f.emailPagos || ""}" />
@@ -367,15 +383,6 @@ function renderEdicionFundacion(f) {
         </label>
         <label>WhatsApp
           <input type="text" name="whatsapp" value="${f.redes?.whatsapp || ""}" />
-        </label>
-        <label>LinkedIn
-          <input type="text" name="linkedin" value="${f.redes?.linkedin || ""}" />
-        </label>
-        <label>Twitch
-          <input type="text" name="twitch" value="${f.redes?.twitch || ""}" />
-        </label>
-        <label>YouTube
-          <input type="text" name="youtube" value="${f.redes?.youtube || ""}" />
         </label>
         <label>TikTok
           <input type="text" name="tiktok" value="${f.redes?.tiktok || ""}" />
