@@ -81,6 +81,23 @@ function mapPersona(row) {
   };
 }
 
+function mapDocumentoFundacion(row) {
+  return {
+    id: row.id,
+    fundacionId: row.fundacion_id,
+    nombreArchivo: row.nombre_archivo,
+    urlArchivo: row.url_archivo,
+    subidoEn: row.subido_en,
+    legible: row.legible,
+    tipoDocumentoDetectado: row.tipo_documento_detectado,
+    rutExtraido: row.rut_extraido,
+    nombreExtraido: row.nombre_extraido,
+    coincideFormulario: row.coincide_formulario,
+    observacionesIa: row.observaciones_ia,
+    analizadoEn: row.analizado_en,
+  };
+}
+
 function mapAnimal(row) {
   if (!row) return null;
   return { id: row.id, nombre: row.nombre, especie: row.especie, estado: row.estado, fotoUrl: row.foto_url || null };
@@ -199,6 +216,22 @@ const DataService = {
       .single();
     checkError(error, "Error actualizando estado de la fundación");
     return mapFundacion(data);
+  },
+
+  async obtenerDocumentosFundacion(fundacionId) {
+    const { data, error } = await sb
+      .from("documentos_fundacion")
+      .select("*")
+      .eq("fundacion_id", fundacionId)
+      .order("subido_en");
+    checkError(error, "Error obteniendo documentos de la fundación");
+    return data.map(mapDocumentoFundacion);
+  },
+
+  async obtenerUrlDocumento(path) {
+    const { data, error } = await sb.storage.from("documentos-fundacion").createSignedUrl(path, 300);
+    checkError(error, "Error generando el enlace del documento");
+    return data.signedUrl;
   },
 
   async verificarFundacion(fundacionId, aprobar = true) {

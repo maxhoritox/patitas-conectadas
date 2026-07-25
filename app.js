@@ -321,7 +321,11 @@ async function renderDashboard() {
   if (!f) { content.innerHTML = ""; return; }
   const resumen = await withErrorToast(() => DataService.resumenFundacion(fundacionActualId));
 
-  const badgeClass = f.estadoVerificacion === "verificada" ? "badge-verified" : "badge-pending";
+  const badgeClass = f.estadoVerificacion === "verificada"
+    ? "badge-verified"
+    : (f.estadoVerificacion === "rechazada" || f.estadoVerificacion === "rechazada_automatica")
+      ? "badge-pending"
+      : "badge-pending";
 
   content.innerHTML = `
     <div class="card">
@@ -340,9 +344,84 @@ async function renderDashboard() {
       <div class="stat-box"><div class="num">${resumen.casosCumplidos}</div><div class="lbl">Casos cumplidos</div></div>
       <div class="stat-box"><div class="num">${formatCLP(resumen.totalRecaudado)}</div><div class="lbl">Total recaudado</div></div>
     </div>
+
+    <div id="revision-documentos-wrap"></div>
   `;
 
   renderEdicionFundacion(f);
+  if (adminUser) await renderRevisionDocumentos(f);
+}
+
+async function renderRevisionDocumentos(f) {
+  const wrap = document.getElementById("revision-documentos-wrap");
+  if (!wrap) return;
+
+  const estadosConDocumentos = ["pendiente_ia", "rechazada_automatica", "pendiente_confirmacion_oficial"];
+  if (!estadosConDocumentos.includes(f.estadoVerificacion)) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  wrap.innerHTML = `<div class="card"><p class="empty-state">Cargando documentos...</p></div>`;
+  const documentos = await withErrorToast(() => DataService.obtenerDocumentosFundacion(f.id)) || [];
+
+  const filasDocumentos = await Promise.all(documentos.map(async (d) => {
+    const url = await withErrorToast(() => DataService.obtenerUrlDocumento(d.urlArchivo));
+    const legibleTexto = d.legible === null ? "Sin analizar aún" : (d.legible ? "Sí" : "No");
+    const coincideTexto = d.coincideFormulario === null ? "—" : (d.coincideFormulario ? "Sí" : "No");
+    return `
+      <div style="border-bottom:1px solid var(--border);padding:10px 0;">
+        <p style="margin:0 0 4px;"><strong>${d.nombreArchivo}</strong> — ${url ? `<a href="${url}" target="_blank" rel="noopener">Ver documento</a>` : "enlace no disponible"}</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0;">
+          Legible: ${legibleTexto} · Tipo detectado: ${d.tipoDocumentoDetectado || "—"}<br>
+          Nombre extraído: ${d.nombreExtraido || "—"} · RUT extraído: ${d.rutExtraido || "—"} · Coincide con formulario: ${coincideTexto}<br>
+          ${d.observacionesIa ? `Observaciones de la IA: ${d.observacionesIa}` : ""}
+        </p>
+      </div>
+    `;
+  }));
+
+  const linkBusquedaOficial = f.rut
+    ? `https://www.google.com/search?q=${encodeURIComponent(`"${f.rut}" registro civil personas jurídicas sin fines de lucro`)}`
+    : null;
+
+  const botonesAccion = f.estadoVerificacion === "pendiente_confirmacion_oficial" ? `
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button class="btn-primary" id="btn-aprobar-fundacion">Aprobar fundación ${ICONS.perro}</button>
+      <button class="btn-secondary" id="btn-rechazar-fundacion" style="border-color:var(--coral);color:var(--coral-dark);">Rechazar</button>
+    </div>
+  ` : "";
+
+  wrap.innerHTML = `
+    <div class="card">
+      <p class="card-label">Revisión de documentos (IA)</p>
+      ${filasDocumentos.join("") || `<p class="empty-state">Aún no hay documentos analizados.</p>`}
+      ${linkBusquedaOficial ? `<p style="font-size:13px;margin-top:10px;"><a href="${linkBusquedaOficial}" target="_blank" rel="noopener">Buscar RUT ${f.rut} en el Registro Civil / SII</a> para la confirmación oficial.</p>` : ""}
+      ${botonesAccion}
+    </div>
+  `;
+
+  const btnAprobar = document.getElementById("btn-aprobar-fundacion");
+  if (btnAprobar) {
+    btnAprobar.addEventListener("click", async () => {
+      const ok = await withErrorToast(() => DataService.verificarFundacion(f.id, true));
+      if (!ok) return;
+      toast("Fundación verificada.");
+      renderDashboard();
+    });
+  }
+
+  const btnRechazar = document.getElementById("btn-rechazar-fundacion");
+  if (btnRechazar) {
+    btnRechazar.addEventListener("click", async () => {
+      const confirmado = confirm(`¿Rechazar definitivamente a "${f.nombre}"?`);
+      if (!confirmado) return;
+      const ok = await withErrorToast(() => DataService.verificarFundacion(f.id, false));
+      if (!ok) return;
+      toast("Fundación rechazada.");
+      renderDashboard();
+    });
+  }
 }
 
 function renderEdicionFundacion(f) {
@@ -487,8 +566,10 @@ async function renderGaleriaCasos(targetId = "galeria-casos") {
 
 function estadoLegible(estado) {
   return {
-    registrada: "Registrada",
-    pendiente: "Pendiente de revisión",
+    pendiente: "Sin documentos aún",
+    pendiente_ia: "Analizando documentos",
+    rechazada_automatica: "Rechazada (revisión automática)",
+    pendiente_confirmacion_oficial: "Pendiente de confirmación oficial",
     verificada: "Verificada",
     rechazada: "Rechazada",
   }[estado] || estado;
