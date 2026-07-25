@@ -152,6 +152,7 @@ const DataService = {
       .insert({
         nombre, tipo, ciudad, email,
         user_id: userId,
+        estado_verificacion: "pendiente",
         banco: banco || null,
         tipo_cuenta: tipoCuenta || null,
         numero_cuenta: numeroCuenta || null,
