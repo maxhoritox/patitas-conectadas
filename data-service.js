@@ -134,6 +134,16 @@ const DataService = {
     if (password) {
       const { data: authData, error: authError } = await sb.auth.signUp({ email, password });
       checkError(authError, "Error creando la cuenta de la fundación");
+
+      // Supabase no devuelve error si el correo ya está registrado (para evitar
+      // enumeración de cuentas): en ese caso entrega un usuario "falso" con
+      // identities vacío. Si no lo detectamos aquí, el insert de abajo revienta
+      // con un error de foreign key confuso.
+      const esUsuarioFalso = authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0;
+      if (esUsuarioFalso) {
+        throw new Error("Ese correo ya está registrado. Intenta iniciar sesión o usa otro correo.");
+      }
+
       userId = authData.user ? authData.user.id : null;
     }
 
