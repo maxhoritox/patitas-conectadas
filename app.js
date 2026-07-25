@@ -542,15 +542,8 @@ async function renderEstadoVerificacion() {
   if (f.estadoVerificacion === "pendiente") {
     card.innerHTML = `
       <p class="card-label">Estado de tu fundación</p>
-      <p style="margin:0 0 14px;">Tu solicitud está <span class="badge badge-pending">Pendiente</span> — normalmente se revisa en 24–48 horas.</p>
-      <button class="btn-secondary" id="btn-simular-aprobacion">Simular aprobación ${ICONS.conejo}</button>
+      <p style="margin:0 0 14px;">Tu solicitud está <span class="badge badge-pending">Pendiente</span> — normalmente se revisa en 5-10 minutos.</p>
     `;
-    document.getElementById("btn-simular-aprobacion").addEventListener("click", async () => {
-      const ok = await withErrorToast(() => DataService.verificarFundacion(fundacionActualId, true));
-      if (!ok) return;
-      toast("¡Fundación verificada!");
-      renderEstadoVerificacion();
-    });
   } else if (f.estadoVerificacion === "verificada") {
     card.innerHTML = `
       <p class="card-label">Estado de tu fundación</p>
