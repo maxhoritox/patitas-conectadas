@@ -192,7 +192,7 @@ const DataService = {
 
     const { data, error } = await sb
       .from("fundaciones")
-      .update({ estado_verificacion: "pendiente" })
+      .update({ estado_verificacion: "pendiente_ia" })
       .eq("id", fundacionId)
       .select()
       .single();

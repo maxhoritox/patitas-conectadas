@@ -529,6 +529,16 @@ document.getElementById("btn-enviar-revision").addEventListener("click", async (
   if (!ok) return;
   toast("Documentos enviados a revisión.");
   goToStep(3);
+
+  // Dispara el análisis automático con IA en segundo plano.
+  // No bloqueamos la pantalla del usuario esperando esto: la vista de
+  // estado (paso 3) va a mostrar "pendiente" y se actualiza sola cuando
+  // el usuario refresque o vuelva a entrar.
+  fetch("/api/analizar-documentos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fundacionId: fundacionActualId }),
+  }).catch((err) => console.error("Error disparando análisis de documentos:", err));
 });
 
 // ---------------- Estado de verificación (paso 3) ----------------
@@ -542,7 +552,24 @@ async function renderEstadoVerificacion() {
   if (f.estadoVerificacion === "pendiente") {
     card.innerHTML = `
       <p class="card-label">Estado de tu fundación</p>
-      <p style="margin:0 0 14px;">Tu solicitud está <span class="badge badge-pending">Pendiente</span> — normalmente se revisa en 5-10 minutos.</p>
+      <p style="margin:0 0 14px;">Aún no has enviado tus documentos.</p>
+    `;
+  } else if (f.estadoVerificacion === "pendiente_ia") {
+    card.innerHTML = `
+      <p class="card-label">Estado de tu fundación</p>
+      <p style="margin:0 0 14px;">Tu solicitud está <span class="badge badge-pending">Pendiente</span> — nuestro sistema está revisando tus documentos, normalmente toma 5-10 minutos.</p>
+    `;
+  } else if (f.estadoVerificacion === "rechazada_automatica") {
+    card.innerHTML = `
+      <p class="card-label">Estado de tu fundación</p>
+      <p style="margin:0 0 14px;">Tus documentos no pudieron ser validados automáticamente (puede ser por legibilidad o porque los datos no coinciden con el formulario). Por favor vuelve a subirlos.</p>
+      <button class="btn-secondary" id="btn-resubir-docs">Volver a subir documentos</button>
+    `;
+    document.getElementById("btn-resubir-docs").addEventListener("click", () => goToStep(2));
+  } else if (f.estadoVerificacion === "pendiente_confirmacion_oficial") {
+    card.innerHTML = `
+      <p class="card-label">Estado de tu fundación</p>
+      <p style="margin:0 0 14px;">Tus documentos pasaron la revisión automática. Está pendiente la confirmación final <span class="badge badge-pending">Pendiente</span> — normalmente se revisa en 24-48 horas.</p>
     `;
   } else if (f.estadoVerificacion === "verificada") {
     card.innerHTML = `
@@ -551,6 +578,11 @@ async function renderEstadoVerificacion() {
       <button class="btn-primary" id="btn-ir-a-casos">Ir a casos ${ICONS.loro}</button>
     `;
     document.getElementById("btn-ir-a-casos").addEventListener("click", () => showView("casos"));
+  } else if (f.estadoVerificacion === "rechazada") {
+    card.innerHTML = `
+      <p class="card-label">Estado de tu fundación</p>
+      <p style="margin:0 0 14px;">Tu solicitud fue rechazada tras la revisión final. Si crees que es un error, contáctanos.</p>
+    `;
   } else {
     card.innerHTML = `<p class="card-label">Estado de tu fundación</p><p>Aún no has enviado tus documentos.</p>`;
   }
