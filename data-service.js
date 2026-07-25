@@ -12,12 +12,6 @@ const SUPABASE_KEY = "sb_publishable_NTP8WAjv2HXrrCEWbkt-tg_cVappJvY";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const PLANES = {
-  gratis: { id: "gratis", nombre: "Gratis", precio: 0, limiteCasos: 2 },
-  pro: { id: "pro", nombre: "Pro", precio: 9990, limiteCasos: 40 },
-  premium: { id: "premium", nombre: "Premium", precio: 25000, limiteCasos: 250 },
-};
-
 function sanitizeFileName(nombre) {
   const sinTildes = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return sinTildes.replace(/[^a-zA-Z0-9.\-_]/g, "_");
@@ -42,7 +36,7 @@ function mapRedes(row) {
   };
 }
 
-function mapFundacion(row, suscripcionRow) {
+function mapFundacion(row) {
   if (!row) return null;
   return {
     id: row.id,
@@ -58,9 +52,6 @@ function mapFundacion(row, suscripcionRow) {
     rut: row.rut,
     emailPagos: row.email_pagos,
     redes: mapRedes(row),
-    suscripcion: suscripcionRow
-      ? { plan: suscripcionRow.plan, estado: suscripcionRow.estado }
-      : { plan: "gratis", estado: "activa" },
   };
 }
 
@@ -185,12 +176,7 @@ const DataService = {
       .single();
     checkError(error, "Error creando fundación");
 
-    const { error: subError } = await sb
-      .from("suscripciones")
-      .insert({ fundacion_id: data.id, plan: "gratis", estado: "activa" });
-    checkError(subError, "Error creando suscripción inicial");
-
-    return mapFundacion(data, { plan: "gratis", estado: "activa" });
+    return mapFundacion(data);
   },
 
   async subirDocumentos(fundacionId, files) {
@@ -249,14 +235,7 @@ const DataService = {
     const { data, error } = await sb.from("fundaciones").select("*").eq("id", id).maybeSingle();
     checkError(error, "Error obteniendo fundación");
     if (!data) return null;
-
-    const { data: sub } = await sb
-      .from("suscripciones")
-      .select("*")
-      .eq("fundacion_id", id)
-      .maybeSingle();
-
-    return mapFundacion(data, sub);
+    return mapFundacion(data);
   },
 
   async listarFundaciones() {
@@ -270,28 +249,7 @@ const DataService = {
     const { data, error } = await sb.from("fundaciones").select("*").eq("user_id", userId).maybeSingle();
     checkError(error, "Error buscando la fundación de esta cuenta");
     if (!data) return null;
-    const { data: sub } = await sb
-      .from("suscripciones")
-      .select("*")
-      .eq("fundacion_id", data.id)
-      .maybeSingle();
-    return mapFundacion(data, sub);
-  },
-
-  // ---------- Suscripciones ----------
-
-  listarPlanes() {
-    return Object.values(PLANES);
-  },
-
-  async cambiarPlan(fundacionId, planId) {
-    if (!PLANES[planId]) throw new Error("Plan inválido");
-    const { error } = await sb
-      .from("suscripciones")
-      .update({ plan: planId, actualizado_en: new Date().toISOString() })
-      .eq("fundacion_id", fundacionId);
-    checkError(error, "Error cambiando de plan");
-    return this.obtenerFundacion(fundacionId);
+    return mapFundacion(data);
   },
 
   // ---------- Personas naturales ----------
@@ -407,11 +365,27 @@ const DataService = {
     return { ...mapCaso(data), donaciones: donaciones.map(mapDonacion) };
   },
 
-  // ---------- Borrar (solo administrador) ----------
+  // ---------- Editar / borrar casos ----------
+
+  async actualizarCaso(casoId, { tipoAyuda, descripcion, metaRecaudacion }) {
+    const payload = {};
+    if (tipoAyuda !== undefined) payload.tipo_ayuda = tipoAyuda;
+    if (descripcion !== undefined) payload.descripcion = descripcion;
+    if (metaRecaudacion !== undefined) payload.meta_recaudacion = Number(metaRecaudacion) || 0;
+
+    const { data, error } = await sb
+      .from("casos")
+      .update(payload)
+      .eq("id", casoId)
+      .select("*, animales(*), fundaciones(*), personas_naturales(*)")
+      .single();
+    checkError(error, "Error actualizando el caso (¿tienes permiso?)");
+    return mapCaso(data);
+  },
 
   async eliminarCaso(casoId) {
     const { error } = await sb.from("casos").delete().eq("id", casoId);
-    checkError(error, "Error eliminando caso (¿iniciaste sesión como admin?)");
+    checkError(error, "Error eliminando caso (¿tienes permiso?)");
   },
 
   async eliminarFundacion(fundacionId) {
