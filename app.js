@@ -174,7 +174,7 @@ document.getElementById("form-login").addEventListener("submit", async e => {
   closeLoginModal();
 });
 
-async function afterLogin(user) {
+async function afterLogin(user, opciones = {}) {
   const fundacion = await withErrorToast(() => DataService.obtenerFundacionPorUsuario(user.id));
   if (fundacion) {
     role = "fundacion";
@@ -190,6 +190,7 @@ async function afterLogin(user) {
   }
   renderNav();
   renderSessionArea();
+  if (opciones.respetarHash && abrirCasoDesdeHash()) return;
   showView("dashboard");
 }
 
@@ -207,7 +208,6 @@ const TABS_POR_ROL = {
     { view: "dashboard", label: "Mi panel" },
     { view: "mis-casos", label: "Mis casos" },
     { view: "casos", label: "Casos" },
-    { view: "suscripcion", label: "Suscripción" },
   ],
   admin: [
     { view: "home", label: "Inicio" },
@@ -215,7 +215,6 @@ const TABS_POR_ROL = {
     { view: "registro", label: "Registrar fundación" },
     { view: "registro-persona", label: "Publicar como particular" },
     { view: "casos", label: "Casos" },
-    { view: "suscripcion", label: "Suscripción" },
   ],
 };
 
@@ -237,7 +236,6 @@ function showView(view) {
   if (view === "dashboard") renderDashboard();
   if (view === "casos") renderCasos();
   if (view === "mis-casos") renderMisCasos();
-  if (view === "suscripcion") renderSuscripcion();
 }
 
 document.addEventListener("click", e => {
@@ -336,7 +334,6 @@ async function renderDashboard() {
         </div>
         <span class="badge ${badgeClass}">${estadoLegible(f.estadoVerificacion)}</span>
       </div>
-      <p style="font-size:13px;color:var(--ink-soft);margin-top:10px;">Plan actual: <strong>${DataService.listarPlanes().find(p => p.id === f.suscripcion.plan).nombre}</strong></p>
     </div>
 
     <div class="stats-row">
@@ -542,26 +539,57 @@ async function renderGaleriaCasos(targetId = "galeria-casos") {
   wrap.querySelectorAll("[data-ayudar]").forEach(btn => {
     btn.addEventListener("click", () => {
       casoActualId = btn.dataset.ayudar;
+      location.hash = `caso-${casoActualId}`;
       renderDetalleCaso();
       showViewRaw("detalle-caso");
     });
   });
 
   wrap.querySelectorAll("[data-compartir]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const texto = `Ayuda a ${btn.dataset.nombre} (${btn.dataset.ayuda}) en Patitas Conectadas 🐾`;
-      try {
-        if (navigator.share) {
-          await navigator.share({ text: texto });
-        } else {
-          await navigator.clipboard.writeText(texto);
-          toast("Copiado — pégalo donde quieras compartirlo.");
-        }
-      } catch {
-        // el usuario canceló el diálogo de compartir, no hacemos nada
-      }
+    btn.addEventListener("click", () => {
+      const url = `${location.origin}${location.pathname}#caso-${btn.dataset.compartir}`;
+      abrirCompartirModal(url);
     });
   });
+}
+
+// ---------------- Modal para compartir un link directo ----------------
+
+function abrirCompartirModal(url) {
+  let backdrop = document.getElementById("compartir-modal-backdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("div");
+    backdrop.id = "compartir-modal-backdrop";
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal-card">
+        <h2 style="margin-top:0;">Compartir caso</h2>
+        <p class="subtitle">Copia este link y pégalo donde quieras compartirlo.</p>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="compartir-link-input" readonly />
+          <button class="btn-primary" id="btn-copiar-link">Copiar</button>
+        </div>
+        <button class="btn-secondary" id="btn-cerrar-compartir" style="margin-top:14px;">Cerrar</button>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", e => {
+      if (e.target.id === "compartir-modal-backdrop") backdrop.classList.remove("show");
+    });
+    document.getElementById("btn-cerrar-compartir").addEventListener("click", () => backdrop.classList.remove("show"));
+    document.getElementById("btn-copiar-link").addEventListener("click", async () => {
+      const input = document.getElementById("compartir-link-input");
+      input.select();
+      try {
+        await navigator.clipboard.writeText(input.value);
+        toast("Link copiado.");
+      } catch {
+        toast("No se pudo copiar automáticamente, selecciónalo y copia manualmente.");
+      }
+    });
+  }
+  document.getElementById("compartir-link-input").value = url;
+  backdrop.classList.add("show");
 }
 
 function estadoLegible(estado) {
@@ -724,6 +752,7 @@ function attachCasoCardHandlers(wrap) {
   wrap.querySelectorAll(".caso-card").forEach(card => {
     card.addEventListener("click", () => {
       casoActualId = card.dataset.id;
+      location.hash = `caso-${casoActualId}`;
       renderDetalleCaso();
       showViewRaw("detalle-caso");
     });
@@ -779,7 +808,10 @@ function showViewRaw(view) {
   document.getElementById(`view-${view}`).classList.add("active");
 }
 
-document.getElementById("btn-volver-casos").addEventListener("click", () => showView("casos"));
+document.getElementById("btn-volver-casos").addEventListener("click", () => {
+  history.replaceState(null, "", location.pathname + location.search);
+  showView("casos");
+});
 
 async function renderDetalleCaso() {
   const content = document.getElementById("detalle-caso-content");
@@ -789,6 +821,7 @@ async function renderDetalleCaso() {
 
   const pct = Math.min(100, Math.round((c.recaudado / c.metaRecaudacion) * 100)) || 0;
   const titular = c.fundacion || c.persona;
+  const esMiCaso = role === "fundacion" && miFundacion && c.fundacionId === miFundacion.id;
 
   const datosTransferencia = titular && titular.numeroCuenta
     ? `
@@ -810,7 +843,7 @@ async function renderDetalleCaso() {
 
   content.innerHTML = `
     <div class="card">
-      ${c.animal.fotoUrl ? `<img src="${c.animal.fotoUrl}" alt="${c.animal.nombre}" style="width:100%;max-height:320px;object-fit:cover;border-radius:12px;margin-bottom:14px;" />` : ""}
+      ${c.animal.fotoUrl ? `<div style="width:100%;max-height:420px;min-height:220px;background:var(--paper);border-radius:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${c.animal.fotoUrl}" alt="${c.animal.nombre}" style="max-width:100%;max-height:420px;object-fit:contain;" /></div>` : ""}
       <h1 style="margin:0 0 4px;">${c.animal.nombre}</h1>
       <p class="subtitle">${c.tipoAyuda} · publicado por ${c.publicador.nombre}${c.publicador.tipo === "persona" ? " (particular)" : ""}</p>
       <p>${c.descripcion || "Sin descripción adicional."}</p>
@@ -847,7 +880,28 @@ async function renderDetalleCaso() {
       </div>
     </div>
 
-    ${adminUser ? `
+    ${esMiCaso ? `
+      <div class="card">
+        <p class="card-label">Editar mi caso</p>
+        <form id="form-editar-caso">
+          <label>Tipo de ayuda
+            <select name="tipoAyuda">
+              ${["Cirugía", "Tratamiento", "Medicamentos", "Alimento"].map(op => `<option ${c.tipoAyuda === op ? "selected" : ""}>${op}</option>`).join("")}
+            </select>
+          </label>
+          <label>Descripción breve
+            <textarea name="descripcion" rows="2">${c.descripcion || ""}</textarea>
+          </label>
+          <label>Meta de recaudación (CLP)
+            <input type="number" name="metaRecaudacion" min="1" value="${c.metaRecaudacion}" required />
+          </label>
+          <button type="submit" class="btn-primary">Guardar cambios ${ICONS.perro}</button>
+        </form>
+        <button class="btn-secondary" id="btn-eliminar-caso" style="margin-top:12px;border-color:var(--coral);color:var(--coral-dark);">
+          Eliminar este caso
+        </button>
+      </div>
+    ` : adminUser ? `
       <div class="card">
         <p class="card-label">Zona de administrador</p>
         <p style="font-size:14px;color:var(--ink-soft);margin:0 0 12px;">
@@ -859,6 +913,17 @@ async function renderDetalleCaso() {
       </div>
     ` : ""}
   `;
+
+  if (esMiCaso) {
+    document.getElementById("form-editar-caso").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      const ok = await withErrorToast(() => DataService.actualizarCaso(casoActualId, data));
+      if (!ok) return;
+      toast("Caso actualizado.");
+      renderDetalleCaso();
+    });
+  }
 
   document.getElementById("form-donacion").addEventListener("submit", async e => {
     e.preventDefault();
@@ -882,52 +947,25 @@ async function renderDetalleCaso() {
   }
 }
 
-// ---------------- Suscripción ----------------
-
-async function renderSuscripcion() {
-  const wrap = document.getElementById("planes-grid");
-  const planes = DataService.listarPlanes();
-
-  if (!fundacionActualId) {
-    wrap.innerHTML = `<p class="empty-state">Selecciona una fundación en el Panel para gestionar su suscripción.</p>`;
-    return;
-  }
-
-  wrap.innerHTML = `<p class="empty-state">Cargando...</p>`;
-  const f = await withErrorToast(() => DataService.obtenerFundacion(fundacionActualId));
-  if (!f) { wrap.innerHTML = ""; return; }
-
-  wrap.innerHTML = planes.map(p => `
-    <div class="plan-card ${f.suscripcion.plan === p.id ? "current" : ""}">
-      <h3>${p.nombre}</h3>
-      <div class="price">${p.precio === 0 ? "Gratis" : formatCLP(p.precio) + "/mes"}</div>
-      <ul><li>${p.limiteCasos === Infinity ? "Casos ilimitados" : `Hasta ${p.limiteCasos} casos activos`}</li></ul>
-      ${f.suscripcion.plan === p.id
-        ? `<span class="badge badge-verified">Plan actual</span>`
-        : `<button class="btn-secondary" data-plan="${p.id}">Elegir ${p.id === "gratis" ? ICONS.conejo : p.id === "pro" ? ICONS.gato : ICONS.caballo}</button>`}
-    </div>
-  `).join("");
-
-  wrap.querySelectorAll("[data-plan]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const ok = await withErrorToast(() => DataService.cambiarPlan(fundacionActualId, btn.dataset.plan));
-      if (!ok) return;
-      toast("Plan actualizado.");
-      renderSuscripcion();
-    });
-  });
-}
-
 // ---------------- Inicio ----------------
+
+function abrirCasoDesdeHash() {
+  const match = location.hash.match(/^#caso-(.+)$/);
+  if (!match) return false;
+  casoActualId = match[1];
+  renderDetalleCaso();
+  showViewRaw("detalle-caso");
+  return true;
+}
 
 (async () => {
   const user = await DataService.sesionActual();
   if (user) {
-    await afterLogin(user);
+    await afterLogin(user, { respetarHash: true });
   } else {
     role = "anon";
     renderNav();
     renderSessionArea();
-    showView("home");
+    if (!abrirCasoDesdeHash()) showView("home");
   }
 })();
